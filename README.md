@@ -2,10 +2,12 @@
 Big-Means: A Simple and Effective Algorithm for Big Data Minimum Sum-of-Squares Clustering
 
 The Big-Means algorithm was originally proposed and described in the following article:
+
 Rustam Mussabayev, Nenad Mladenovic, Bassem Jarboui, Ravil Mussabayev. How to Use K-means for Big Data Clustering? // Pattern Recognition, Volume 137, May 2023, 109269; 
 https://doi.org/10.1016/j.patcog.2022.109269
 
-Preprint of the article:
+Preprint:
+
 Rustam Mussabayev, Nenad Mladenovic, Ravil Mussabayev, Bassem Jarboui. Big-means: Less is More for K-means Clustering. arXiv preprint arXiv:2204.07485. 14 Apr 2022. pp. 1-40
 https://arxiv.org/pdf/2204.07485.pdf
 
