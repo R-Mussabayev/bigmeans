@@ -5,8 +5,8 @@
 
 # BIG-MEANS PARAMETERS:
 # sample_size : The number of data points to be randomly selected from the input dataset at each iteration of the Big-means.
-# n_centers : The desired number of clusters
-# max_iter : Maximum number of samples to be processed
+# n_centers : The desired number of clusters.
+# max_iter : Maximum number of samples to be processed.
 # tmax : The time limit for the search process (in seconds); a zero or negative value means no limit.
 # local_max_iters : The maximum number of K-means iterations before declaring convergence and stopping the clustering process for each sample.
 # local_tol : The threshold below which the relative change in the objective function between two iterations must fall to declare convergence of K-means.
@@ -400,15 +400,15 @@ def big_means_competitive(points, n_centers = 3, sample_size = 100, max_iter = 1
                 time_now = time.perf_counter() - start_time
             running_time[t] = time_now
             n_iters[t] += 1
-            #if new_objective < objectives[t]:
-            if new_objective < best_objective:
+            if new_objective < objectives[t]:
                 objectives[t] = new_objective
                 centers[t] = new_centers.copy()
                 best_times[t] = time_now
                 best_n_iters[t] = np.sum(n_iters)
                 if printing:
-                    with objmode:
-                        print ('%-30f%-15i%-15.2f' % (new_objective, best_n_iters[t], time_now))
+                    if new_objective < best_objective:
+                        with objmode:
+                            print ('%-30f%-15i%-15.2f' % (new_objective, best_n_iters[t], time_now))
     
     best_ind = np.argmin(objectives)
     final_centers = centers[best_ind].copy()
