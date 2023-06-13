@@ -1,55 +1,85 @@
-# Big-Means: A Simple and Effective Algorithm for Big Data Minimum Sum-of-Squares Clustering
-# Original paper:
-# Rustam Mussabayev, Nenad Mladenovic, Ravil Mussabayev, Bassem Jarboui. Big-means: Less is More for K-means Clustering. arXiv preprint arXiv:2204.07485. 14 Apr 2022. pp. 1-40
-# https://arxiv.org/pdf/2204.07485.pdf
-# rmusab@gmail.com
+# Big-means: K-means for big data clustering
 
+# Rustam Mussabayev, Nenad Mladenovic, Bassem Jarboui, Ravil Mussabayev. How to Use K-means for Big Data Clustering? // Pattern Recognition, Volume 137, May 2023, 109269; https://doi.org/10.1016/j.patcog.2022.109269
 
 from bigmeans import *
 import math
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
+def load_dataset():
+    filename = 'skin_segmentation.data'
+    columns = slice(0, 3)
+    with open(filename, newline='') as f1:
+        reader = csv.reader(f1, delimiter='\t')
+        raw = [row[columns] for row in reader]
+    return np.array(raw, dtype=float)
 
-# Generation of synthetic dataset for clustering
-grid_size = 6
-n_features = 2
-n_entities = 600000
-standard_deviation = 0.06
-n_candidates = 3
-#nb.config.NUMBA_NUM_THREADS = 12 # The number of CPU cores to be used for parallel processing
-entities, true_membership, true_centroids = generate_blobs_on_grid(n_entities, grid_size, n_features, standard_deviation)
-if n_features == 2:
-    draw_dataset(entities, true_centroids, true_membership)    
-n_entities = entities.shape[0]
-n_clusters = true_centroids.shape[0]
+points = load_dataset()
 
 
-# Parameters of Big-means algorithm
-parallel = True
-sample_size = 3000
-max_n_samples = 100000 # maximum number of samples for clustering
-init_mode = 1 # initialization mode (0 - Forgy; 1 - K-means++)
-tmax = 10 # time limit (in seconds)
-local_max_iters = 300 # maximum number of iterations for K-means local search
-local_tol = 0.0001 # relative tolerance for K-means local search
-n_candidates = 3 # number of candidates for K-means++ initialization
-printing = True # printing the intermediate result output
+# Big-means parameters:
+sample_size = 160000 # The number of data points to be randomly selected from the input dataset at each iteration of the Big-means.
+n_centers = 25 # The desired number of clusters
+max_iter = 2000 # Maximum number of samples to be processed
+tmax = 1000.0 # The time limit for the search process (in seconds); a zero or negative value means no limit.
+local_max_iters = 300 # The maximum number of K-means iterations before declaring convergence and stopping the clustering process for each sample.
+local_tol = 0.0001 # The threshold below which the relative change in the objective function between two iterations must fall to declare convergence of K-means.
+n_candidates = 3 # The number of candidate centers to choose from at each stage of the K-means++ initialization algorithm
 
 
-# Big-means clustering
-centroids, objective, membership, n_iter, best_n_iter, best_time, n_dists = big_means_par1(entities, n_clusters, sample_size, max_n_samples, tmax, init_mode, local_max_iters, local_tol, n_candidates, parallel, printing)
 
+nb.set_num_threads(nb.config.NUMBA_NUM_THREADS) # Set the number of threads for parallel execution to the maximum possible
+#nb.set_num_threads(3) # Set the number of threads for parallel execution to the some value
+
+# Best Known Solution (for comparison)
+f_best = 102280000
+
+
+print('SEQUENTIAL BIG-MEANS:')
 print()
-print('Final objective:', objective)
+centers, objective, assignment, n_iter, best_n_iter, best_time, n_dists = big_means_sequential(points, n_centers, sample_size, max_iter, tmax, local_max_iters, local_tol, n_candidates, True)
+print()
+print('#Iterations: ', n_iter)
+print('#Distances: ', n_dists)
+print('Full Objective: ', objective)
+objective_gap = round((objective - f_best) / objective * 100, 2)
+print('Objective Gap: ', objective_gap, '%')
 print()
 
 
-# Visualization of clustering results
-draw_dataset(entities, centroids, membership)
+print("BIG-MEANS WITH 'INNER PARALLELISM':")
+print()
+centers, objective, assignment, n_iter, best_n_iter, best_time, n_dists = big_means_inner(points, n_centers, sample_size, max_iter, tmax, local_max_iters, local_tol, n_candidates, True)
+print()
+print('#Iterations: ', n_iter)
+print('#Distances: ', n_dists)
+print('Full Objective: ', objective)
+objective_gap = round((objective - f_best) / objective * 100, 2)
+print('Objective Gap: ', objective_gap, '%')
+print()
 
 
+print("BIG-MEANS WITH 'COMPETITIVE PARALLELISM':")
+print()
+centers, objective, assignment, n_iter, best_n_iter, best_time, n_dists = big_means_competitive(points, n_centers, sample_size, max_iter, tmax, local_max_iters, local_tol, n_candidates, True)
+print()
+print('#Iterations: ', n_iter)
+print('#Distances: ', n_dists)
+print('Full Objective: ', objective)
+objective_gap = round((objective - f_best) / objective * 100, 2)
+print('Objective Gap: ', objective_gap, '%')
+print()
 
 
-
-
+print("BIG-MEANS WITH 'COLLECTIVE PARALLELISM':")
+print()
+centers, objective, assignment, n_iter, best_n_iter, best_time, n_dists = big_means_collective(points, n_centers, sample_size, max_iter, tmax, local_max_iters, local_tol, n_candidates, True)
+print()
+print('#Iterations: ', n_iter)
+print('#Distances: ', n_dists)
+print('Full Objective: ', objective)
+objective_gap = round((objective - f_best) / objective * 100, 2)
+print('Objective Gap: ', objective_gap, '%')
+print()
