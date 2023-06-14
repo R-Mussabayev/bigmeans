@@ -384,8 +384,7 @@ def big_means_competitive(points, n_centers = 3, sample_size = 100, max_iter = 1
     for t in prange(n_threads):
         while (np.sum(n_iters) < max_iter or max_iter <= 0) and (running_time[t] < tmax or tmax <= 0.0):        
             sample = points[np.random.choice(n_points, sample_size, replace=False)]
-            best = np.argmin(objectives)
-            best_objective = objectives[best]
+            best_objective = objectives[np.argmin(objectives)]
             new_centers = centers[t].copy()
             degenerate_mask = np.sum(np.isnan(new_centers), axis = 1) > 0
             n_degenerate = np.sum(degenerate_mask)
@@ -453,7 +452,7 @@ def big_means_collective(points, n_centers = 3, sample_size = 100, max_iter = 10
             sample = points[np.random.choice(n_points, sample_size, replace=False)]
             best = np.argmin(objectives)
             best_objective = objectives[best]
-            new_centers = centers[best].copy()                            
+            new_centers = centers[best].copy()
             degenerate_mask = np.sum(np.isnan(new_centers), axis = 1) > 0
             n_degenerate = np.sum(degenerate_mask)
             if n_degenerate > 0:
@@ -483,3 +482,100 @@ def big_means_collective(points, n_centers = 3, sample_size = 100, max_iter = 10
     full_objective, _, assignment, full_num_dists = kmeans_parallel(points, final_centers, 0, 0.0, True)
 
     return final_centers, full_objective, assignment, np.sum(n_iters), best_n_iters[best_ind], best_times[best_ind], np.sum(n_dists)+full_num_dists
+
+
+# Big-means with 'Hybrid Parallelism (competitive + collective)': 
+# This parallelization approach involves two consecutive phases: competitive and collective.
+# During the first phase, each worker tries independently to obtain its own best solution. 
+# Then, during the second phase, the workers begin sharing information about the best solutions 
+# with each other and try to improve them. 
+# Finally, the best solution among all workers is selected as the final result.
+# Additional Parameters:
+# max_iter1 : Maximum number of samples to be processed for the first phase.
+# max_iter2 : Maximum number of samples to be processed for the second phase.
+# tmax1 : The time limit for the first phase (in seconds).
+# tmax2 : The time limit for the second phase (in seconds).
+@njit(parallel = True)
+def big_means_hybrid(points, n_centers = 3, sample_size = 100, max_iter1 = 10000, max_iter2 = 10000, tmax1 = 10.0, tmax2 = 10.0, local_max_iters=300, local_tol=0.0001, n_candidates = 3, printing=False):
+    with objmode(start_time = 'float64'):
+        start_time = time.perf_counter()
+        
+    n_points, n_features = points.shape
+    n_threads = nb.get_num_threads()
+    assert sample_size <= n_points
+    assert max_iter1 > 0 and max_iter2 > 0 and tmax1 > 0.0 and tmax2 > 0.0
+    if printing:
+        with objmode:
+            print ('%-30s%-15s%-15s' % ('sample objective', 'n_iter', 'cpu_time'))
+    cpu_time = 0.0
+
+    centers = np.full((n_threads, n_centers, n_features), np.nan)
+    objectives = np.full(n_threads, np.inf)
+    n_dists = np.full(n_threads, 0)
+    n_iters = np.full(n_threads, 0)
+    running_time = np.full(n_threads, 0.0)
+    best_times = np.full(n_threads, 0.0)
+    best_n_iters = np.full(n_threads, 0)
+    
+    for t in prange(n_threads):
+        while (np.sum(n_iters) < max_iter1) and (running_time[t] < tmax1):        
+            sample = points[np.random.choice(n_points, sample_size, replace=False)]
+            best_objective = objectives[np.argmin(objectives)]
+            new_centers = centers[t].copy()
+            degenerate_mask = np.sum(np.isnan(new_centers), axis = 1) > 0
+            n_degenerate = np.sum(degenerate_mask)
+            if n_degenerate > 0:
+                center_inds, num_dists = kmeans_plus_plus(sample, new_centers[~degenerate_mask], n_degenerate, n_candidates)
+                n_dists[t] += num_dists
+                new_centers[degenerate_mask,:] = sample[center_inds,:]                
+            new_objective, _, _, num_dists = kmeans(sample, new_centers, local_max_iters, local_tol, True)
+            n_dists[t] += num_dists
+            with objmode(time_now = 'float64'):
+                time_now = time.perf_counter() - start_time
+            running_time[t] = time_now
+            n_iters[t] += 1
+            if new_objective < objectives[t]:
+                objectives[t] = new_objective
+                centers[t] = new_centers.copy()
+                best_times[t] = time_now
+                best_n_iters[t] = np.sum(n_iters)
+                if printing:
+                    if new_objective < best_objective:
+                        with objmode:
+                            print ('%-30f%-15i%-15.2f' % (new_objective, best_n_iters[t], time_now))
+                            
+    for t in prange(n_threads):                            
+        while (np.sum(n_iters) < max_iter1+max_iter2) and (running_time[t] < tmax1+tmax2):        
+            sample = points[np.random.choice(n_points, sample_size, replace=False)]
+            best = np.argmin(objectives)
+            best_objective = objectives[best]
+            new_centers = centers[best].copy()
+            degenerate_mask = np.sum(np.isnan(new_centers), axis = 1) > 0
+            n_degenerate = np.sum(degenerate_mask)
+            if n_degenerate > 0:
+                center_inds, num_dists = kmeans_plus_plus(sample, new_centers[~degenerate_mask], n_degenerate, n_candidates)
+                n_dists[t] += num_dists
+                new_centers[degenerate_mask,:] = sample[center_inds,:]                
+            new_objective, _, _, num_dists = kmeans(sample, new_centers, local_max_iters, local_tol, True)
+            n_dists[t] += num_dists
+            with objmode(time_now = 'float64'):
+                time_now = time.perf_counter() - start_time
+            running_time[t] = time_now
+            n_iters[t] += 1
+            if new_objective < best_objective:
+                objectives[t] = new_objective
+                centers[t] = new_centers.copy()
+                best_times[t] = time_now
+                best_n_iters[t] = np.sum(n_iters)
+                if printing:
+                    with objmode:
+                        print ('%-30f%-15i%-15.2f' % (new_objective, best_n_iters[t], time_now))                            
+    
+    best_ind = np.argmin(objectives)
+    final_centers = centers[best_ind].copy()
+        
+    # When 'max_iters = 0' is used for kmeans, only the assignment step will be performed
+    full_objective, _, assignment, full_num_dists = kmeans_parallel(points, final_centers, 0, 0.0, True)
+
+    return final_centers, full_objective, assignment, np.sum(n_iters), best_n_iters[best_ind], best_times[best_ind], np.sum(n_dists)+full_num_dists
+
