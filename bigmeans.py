@@ -6,7 +6,7 @@
 # BIG-MEANS PARAMETERS:
 # sample_size : The number of data points to be randomly selected from the input dataset at each iteration of the Big-means.
 # n_centers : The desired number of clusters.
-# max_iter : Maximum number of samples to be processed.
+# max_iter : Maximum number of iterations (samples) to be processed.
 # tmax : The time limit for the search process (in seconds); a zero or negative value means no limit.
 # local_max_iters : The maximum number of K-means iterations before declaring convergence and stopping the clustering process for each sample.
 # local_tol : The threshold below which the relative change in the objective function between two iterations must fall to declare convergence of K-means.
