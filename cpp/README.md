@@ -9,7 +9,7 @@ Rustam Mussabayev, Nenad Mladenovic, Bassem Jarboui, Ravil Mussabayev. How to Us
 ## Requirements
 - C++17 or newer
 - [Eigen3](https://eigen.tuxfamily.org/) (header-only)
-- OpenMP (optional, for parallelism)
+- OpenMP (mandatory, for parallelism)
 
 ## Build
 ```bash
