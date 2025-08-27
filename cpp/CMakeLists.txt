@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Dependencies
 find_package(Eigen3 REQUIRED) # Require Eigen3
-find_package(OpenMP REQUIRED) # Require Eigen3
+find_package(OpenMP REQUIRED) # Require OpenMP
 
 # Library
 add_library(bigmeans bigmeans.cpp)
