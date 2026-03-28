@@ -3,8 +3,20 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Compiled Python files created by interpreter (machine-specific)
+*.pyc
+
+# Jupyter Notebook autosave checkpoints
+.ipynb_checkpoints/
+
+# General cache directory (e.g., HuggingFace, pip, etc.)
+.cache/
+
 # C extensions
 *.so
+
+# Temporary files created by programs
+*.tmp
 
 # Distribution / packaging
 .Python
