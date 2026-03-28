@@ -21,7 +21,7 @@ cmake --build build
 1) Prepare your dataset (e.g., skin_segmentation.data).
 
 2) (Optional) Set the number of OpenMP threads:
-   export OMP_NUM_THREADS=$(nproc)         # Use all available cores
+   export OMP_NUM_THREADS=$(nproc)         # Use all available CPU cores
    export OMP_NUM_THREADS=16               # OpenMP threads number (example fixed value)
 
 3) Run the program:
